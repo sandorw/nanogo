@@ -1,0 +1,74 @@
+First goal: get a working basic MCTS engine in place that can play the game
+then future improvements can be implemented and tested properly
+consider porting the Michi code from python to C++
+
+
+MICHI OUTLINE
+
+main loop
+tree_search() is a (parallelized) loop over tree_descend(), mcplayout(), and tree_update()
+tree_descend() descends through the tree to a leaf
+	chooses the most urgent child node at each step (as defined by node.rave_urgency())
+	if a node has been visited enough times, the node is expanded (node.expand())
+mcplayout() performs the random monte carlo playout
+	for each move, iterate through the heuristic list (each has a probability of being chosen)
+	rejects self-atari moves in some conditions
+tree_update() does the AMAF propagation across all the nodes
+
+TreeNode:
+	tracks wins and visits, AMAF values, child nodes
+node.expand() 
+	uses playout generator to generate and initialize children - gen_playout_moves() produces many moves
+	priors bias the search toward better moves
+	priors can be incorporated in many ways (see progressive bias, progressive widening)
+
+gen_playout_moves()
+	produces candidate moves in order of preference
+	tree gen considers the whole board for heuristic application
+	playout considers only the previous couple moves for heuristic application
+	included heuristics:
+		check for groups in atari and resolve them
+		apply 3x3 patterns on/around considered points
+		all other moves in random order
+
+fix_atari() is "maybe the most complicated part of the whole program"
+	determines if groups are in atari and how to escape/capture if possible
+	reads ladder attacks
+	considers counter captures as a way to get out of atari
+
+Main classes:
+Position - a state within the game, returns the updated position after each move is made
+TreeNode - tracks visits and wins, children nodes, and its position
+	sets new children via e.g. pos2 = self.pos.move(c) (c represents the selected move)
+	pos.move() returns a new position object, so the tree is full weight (would storing deltas be better?)
+	mcplayout uses a single position object for the entire playout - nothing is saved from it
+
+Inspect Pachi's tree setup to figure out if it stores full weight trees too
+	Pachi's tree nodes seem to just be diffs - no board object stored
+
+
+
+
+LESSONS
+
+Memory management - consider managing my own memory buffer to avoid constant mallocs and frees
+	see comments in pachi's uct/tree.h
+Allocate all node children in a block rather than as a linked list (requires constant size)
+Use abstract classes with different implementations to provide options to benchmark?
+Encapsulate everything as much as possible to aid in future optimizations!
+Declare methods static where possible - if they don't access non-static state
+Avoid virtual member functions where possible
+Initialize variables instead of using assignment
+Use += and prefix in/decrement
+Pass objects that may be null by pointers, otherwise references
+Pass const objects where possible
+Use a block/pool allocator to store many objects of small size
+Add elements to collections via the optimized functions (insert for multiple additions)
+Define the swap function for your classes with dynamic memory
+Use C I/O functions rather than C++ streams
+Use switch statements rather than many if elses
+If you must do bitwise operations, use an unsigned int
+To assign bits to a variable, you can apparently do something like unsigned val: 10 to give 10 bits
+	Note that there is a performance penalty involved
+Arrange most used vars in a class in the first 128 bytes, then sort largest to smallest
+

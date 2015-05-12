@@ -1,0 +1,17 @@
+-=GOAL=-
+  Sprint to get something working, even if it is not optimized
+  Consider just implementing michi in C++
+
+-=LAYOUT=-
+  Main loop:
+    Whenever it is nanogo's turn to play:
+      While time to pick a move still remains:
+        Select a move in the current tree to explore
+        Perform a playout starting from that move
+        If enough simulations have accumulated for this move, expand the subtree
+      When time is up, select the appropriate move to play
+
+-=PATTERN MATCHER=-
+  Consider harvesting patterns and associated moves to play from a collection of saved games
+    Save logs of games played to try to learn from them (in an automated fashion - nanogo should learn from them)
+
