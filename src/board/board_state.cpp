@@ -6,6 +6,12 @@
  */
 
 #include <board_state.h>
+#include <set>
+#include <stack>
+
+board_position getStoneType(bool blacks_turn) {
+	return (blacks_turn ? board_position::BLACK_STONE : board_position::WHITE_STONE);
+}
 
 board_position getOpposingColor(board_position b) {
 	return (b == board_position::WHITE_STONE ? board_position::BLACK_STONE : board_position::WHITE_STONE);
@@ -81,6 +87,9 @@ board_state::board_state() {
 		coord[i] = board_position::OFF_BOARD;
 	for (int i=int_board_size-1; i < num_coord; i += int_board_size)
 		coord[i] = board_position::OFF_BOARD;
+	for (int i=0; i < num_coord; ++i)
+		if (coord[i] == board_position::EMPTY)
+			addEmptyLocation(i);
 	komi = initial_komi;
 	ko = -1;
 	last_play = last_play2 = move(board_position::EMPTY, 0);
@@ -105,6 +114,8 @@ board_state::board_state(board_state& b) {
 	for (int i=0; i < b.groups.size(); ++i) {
 		groups.push_back(new group(b.groups[i]));
 	}
+	for (intersection loc : b.empty_locations)
+		addEmptyLocation(loc);
 }
 
 board_state::~board_state() {
@@ -171,6 +182,7 @@ void board_state::makeMove(move m) {
 	intersection loc = m.getLocation();
 	board_position opposingColor = getOpposingColor(stoneColor);
 	coord[loc] = stoneColor;
+	removeEmptyLocation(loc);
 	int groupIndex = group_lookup[loc] = addGroup();
 	bool check_for_ko = false;
 	for (int i=0; i < 4; ++i) {
@@ -207,6 +219,7 @@ void board_state::makeMove(move m) {
 				for (int j=0; j < num_coord; ++j) {
 					if (groups[j] == capturedGroup) {
 						coord[j] = board_position::EMPTY;
+						addEmptyLocation(j);
 						group_lookup[j] = -1;
 						captures[stoneColor]++;
 						num_capped++;
@@ -284,6 +297,114 @@ void board_state::refillLiberties(int groupIndex) {
 	}
 }
 
-bool isEye(intersection loc) {
-	//TODO: this
+board_position board_state::isPotentialEye(intersection loc) {
+	if (coord[loc] != board_position::EMPTY)
+			return board_position::EMPTY;
+	board_position eye_color = board_position::EMPTY;
+	for (int i=0; i < 4; ++i) {
+		board_position bp = coord[loc + neighbor_offsets[i]];
+		if (bp == board_position::EMPTY)
+			return board_position::EMPTY;
+		if (bp == board_position::OFF_BOARD || bp == eye_color)
+			continue;
+		if (eye_color == board_position::EMPTY)
+			eye_color = bp;
+		else if (bp != eye_color)
+			return board_position::EMPTY;
+	}
+	return eye_color;
+}
+
+bool board_state::isFalseEye(intersection loc, board_position eye_color) {
+	//This method counts empty spots as the color of the eye
+	//It could return eyes that are not yet finished and could become false
+
+	//Possible false positives from this method for some board states
+
+	int opposing_count = 0;
+	bool atEdge = false;
+	board_position opposing_color = getOpposingColor(eye_color);
+	for (int i=0; i < 4; ++i) {
+		board_position bp = coord[loc + diag_offsets[i]];
+		if (bp == opposing_color)
+			++opposing_count;
+		else if (bp == board_position::OFF_BOARD)
+			atEdge = true;
+	}
+	if (atEdge)
+		++opposing_count;
+	return (opposing_count >= 2);
+}
+
+board_position board_state::isEye(intersection loc) {
+	board_position bp = isPotentialEye(loc);
+	if ((bp == board_position::EMPTY) || (isFalseEye(loc, bp)))
+		return board_position::EMPTY;
+	return bp;
+}
+
+inline void board_state::addEmptyLocation(intersection loc) {
+	empty_locations.push_back(loc);
+}
+
+inline void board_state::removeEmptyLocation(intersection loc) {
+	for (int i=0; i < empty_locations.size(); ++i)
+		if (empty_locations[i] == loc) {
+			empty_locations[i] = empty_locations.back();
+			empty_locations.pop_back();
+		}
+}
+
+std::pair<float,float> board_state::scoreChinese() {
+	//This assumes that all dead groups have already been captured and removed from the board
+	float wscore = komi;
+	float bscore = 0;
+
+	//TODO:
+	//  Handicap score in stones should be added to white's score
+
+	std::set<intersection> processedEmpties, emptiesGroup;
+	std::stack<intersection> awaitingProcessing;
+	for (int i=0; i < num_coord; ++i) {
+		if (coord[i] == board_position::WHITE_STONE)
+			wscore++;
+		else if (coord[i] == board_position::BLACK_STONE)
+			bscore++;
+		else if ((coord[i] == board_position::EMPTY)
+				&& (processedEmpties.find(i) == processedEmpties.end())) {
+			//Determine if this position and any linked positions should count as territory for either player
+			emptiesGroup.clear();
+			awaitingProcessing.push(i);
+			bool isClaimed = true;
+			board_position currentColor = board_position::EMPTY;
+			while (!awaitingProcessing.empty()) {
+				intersection loc = awaitingProcessing.pop();
+				emptiesGroup.insert(loc);
+				for (int i=0; i < 4; ++i) {
+					intersection neighbor = loc + neighbor_offsets[i];
+					board_position neighbor_color = coord[neighbor];
+					//Check below means there could be multiple copies of a location on the stack
+					if ((neighbor_color == board_position::EMPTY) && (emptiesGroup.find(neighbor) == emptiesGroup.end()))
+						awaitingProcessing.push(neighbor);
+					else if ((neighbor_color == board_position::WHITE_STONE) || (neighbor_color == board_position::BLACK_STONE)) {
+						if (currentColor == board_position::EMPTY)
+							currentColor = neighbor_color;
+						else if (currentColor != neighbor_color)
+							isClaimed = false;
+					}
+				}
+			}
+			for (intersection loc : emptiesGroup) {
+				processedEmpties.insert(loc);
+				if (isClaimed) {
+					if (currentColor == board_position::WHITE_STONE)
+						wscore++;
+					else if (currentColor == board_position::BLACK_STONE)
+						bscore++;
+				}
+			}
+		}
+	}
+
+	return std::make_pair(bscore, wscore);
 }

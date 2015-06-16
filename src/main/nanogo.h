@@ -14,6 +14,7 @@ public:
 
 	nanogo();
 	~nanogo();
+	void playGame();
 
 private:
 
@@ -34,17 +35,18 @@ private:
 //  enable the playout to detect when it is done and score the board
 //		play all non-eye locations (plus avoid self atari) until the board is full
 
-//TODO: (Medium)
-//Rules & scoring - basic ko rules are already covered
-//  maybe look at how michi and pachi handle this
-//  simulations avoid playing in their own eyes, but play everywhere else
-//  look at the isEye code and the scoring code
-
 //TODO: RAVE/AMAF propagation (Medium)
 //  include flags to turn it on/off
 //  update sibling nodes if you made one of their moves in your playout simulation
 //  IGNORE this until heuristics are implemented - not a good addition to random playouts
 //  Pachi includes criticality information in the RAVE setup (thesis page 47)
+
+//TODO: plan for seki and self-atari
+//  avoiding self-atari does prevent messing up seki
+
+//TODO: Edge cases in eye/false eye implementation
+//  double dragon case?
+//  consider two groups facing each other, not connected but sharing 2 liberties - eyes look false but aren't
 
 //TODO: GTP interfacing (Very Hard)
 

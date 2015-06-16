@@ -6,17 +6,29 @@
  */
 
 static move playout_policy::selectRandomMove(board_state& b) {
-	//TODO:
-	//2 options here:
-	//	generate a collection of all possible valid moves, then select one
-	//	more memory intensive
-	//		OR
-	//	randomly select moves as I go, involving no extra storage, but many calls to the random number generator
-	//
-	//For reference, Pachi keeps track of all empty spots and iterates through them starting from a random position
-	//  these are tracked at the board_state level
 
-	//loop through the board, selecting all empty spots
-	//  if an empty spot is a valid move and is not self-atari* or an eye, add it to consideration
-	//		*may be allowed in some situations?
+	//TODO:
+	//What is builtin_expect?
+
+	//TODO:
+	//Should I allow filling your own eye with a low probability?
+
+	int numEmptyLocations = b.empty_locations.size();
+	int randomLoc = getRandomInt(numEmptyLocations-1);
+	board_position stone_color = getStoneType(b.blacks_turn);
+	bool triedAll = false;
+	int i=randomLoc;
+	while (!triedAll) {
+		intersection loc = b.empty_locations[i];
+		move m(getStoneType(b.blacks_turn), loc);
+		if (b.isValidMove(m) && (b.isEye(loc) != stone_color))
+			return m;
+		if (++i >= numEmptyLocations)
+			i=0;
+		if (i == randomLoc)
+			triedAll = true;
+	}
+
+	//No valid moves found, so pass
+	return move(board_position::OFF_BOARD, 0);
 }

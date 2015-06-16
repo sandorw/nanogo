@@ -10,6 +10,8 @@
 
 //TODO: Does C++ do static classes?
 //  Maybe light playouts don't require a playout_policy object, but heavy ones do?
+//  Do I want an interface with multiple implementations?
+//  Figure out how heavy playouts work, model after that
 
 static class playout_policy {
 public:

@@ -40,7 +40,6 @@ public:
 	//performs a MC playout from this node's position
 	void performMCSimulation(board_state& b);
 
-
 private:
 	void addChild(move newMove, int newDepth);
 };
@@ -56,6 +55,9 @@ public:
 
 	//Walks the tree and performs a MC playout simulation
 	void performMCSimulation();
+
+	//chooses the next move to take
+	move chooseMove();
 
 	//Applies the specified move to the board_state and tree
 	void makeMove(move m);

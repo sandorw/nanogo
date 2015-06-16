@@ -6,6 +6,7 @@
  */
 
 #include <board_state.h>
+#include <playout_policy.h>
 #include <cmath>
 
 treeNode::treeNode(move newMove, int newDepth, treeNode *parentNode) {
@@ -53,15 +54,15 @@ float treeNode::getNodeValue(bool blacks_turn) {
 }
 
 void treeNode::performMCSimulation(board_state& b) {
-	//TODO: this
+	while(!b.isGameOver()) {
+		move m = playout_policy::selectRandomMove(b);
+		b.makeMove(m);
+	}
 
-	//Until the game is finished,
-	//  generate a move, then apply that move
-	//move generation can be via a number of strategies!
-
-	//When the game is finished,
-	//	score the current board_state and assign a winner
-	bool blackWins;
+	bool blackWins = true;
+	std::pair<float,float> scores = b.scoreChinese();
+	if (scores.second > scores.first)
+		blackWins = false;
 
 	//Update the tree with the results of the simulation
 	treeNode *node = this;
@@ -146,4 +147,17 @@ void tree::performMCSimulation() {
 	if (playoutNode->sims >= EXPAND_NODE_THRESHOLD)
 		playoutNode->expand(b);
 
+}
+
+move tree::chooseMove() {
+	move bestMove = move(board_position::OFF_BOARD, 0);
+	int bestNSims = 0;
+	if (root == nullptr)
+		return bestMove;
+	for (int i=0; i < root->children.size(); ++i)
+		if (root->children[i]->sims > bestNSims) {
+			bestMove = root->children[i]->moveMade;
+			bestNSims = root->children[i]->sims;
+		}
+	return bestMove;
 }

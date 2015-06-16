@@ -22,6 +22,7 @@ enum board_position {
 	EMPTY
 };
 
+board_position getStoneType(bool blacks_turn);
 board_position getOpposingColor(board_position b);
 
 /*
@@ -47,6 +48,7 @@ private:
 
 	//TODO:
 	//Consider having stones in a group point to each other for faster iteration through a group
+	//Board would store starting (and ending?) intersections for each group, plus a pointer to the next location at each point
 
 };
 
@@ -56,6 +58,7 @@ private:
 #define num_coord (int_board_size*int_board_size)
 
 intersection neighbor_offsets[4] = {-int_board_size, -1, 1, int_board_size};
+intersection diag_offsets[4] = {-int_board_size-1, -int_board_size+1, int_board_size-1, int_board_size+1};
 
 /*
  * Move class
@@ -86,6 +89,7 @@ public:
 	bool blacks_turn;
 	int group_lookup[num_coord];
 	std::vector<group *> groups;
+	std::vector<intersection> empty_locations;
 
 	board_state();
 	board_state(board_state& b);
@@ -105,8 +109,11 @@ public:
 	//sets the komi for the game
 	void setKomi(float komiVal);
 
-	//returns true if the specified point is an eye
-	bool isEye(intersection loc);
+	//returns stone color if the position is an eye, otherwise board_position::EMPTY
+	board_position isEye(intersection loc);
+
+	//scores the board under Chinese rules
+	std::pair<float,float> scoreChinese();
 
 private:
 	int addGroup();
@@ -114,6 +121,10 @@ private:
 	void updateGroupIndex(int oldIndex, int newIndex);
 	bool isCapMove(move m);
 	void refillLiberties(int groupIndex);
+	board_position isPotentialEye(intersection loc);
+	bool isFalseEye(intersection loc, board_position eye_color);
+	void addEmptyLocation(intersection loc);
+	void removeEmptyLocation(intersection loc);
 
 	//TODO: Consider having whose_turn track the allied stone and opposing stone enums pre-calculated
 	//  to avoid constantly calculating them

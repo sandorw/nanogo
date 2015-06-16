@@ -25,6 +25,8 @@
 //Tree search parameters
 #define EXPLORATION_CONSTANT 1.0f
 
+//Turn parameters
+#define TIME_PER_TURN_S 30
 
 
 #endif /* COMMON_PARAMS_H_ */
